@@ -29,6 +29,36 @@
   margin-bottom: 20px;
 }
 
+.input-mode-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #666;
+}
+
+.mode-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -52,6 +82,16 @@
 .form-group input:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.file-info {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f0f9ff;
+  border-radius: 6px;
+  color: #0c4a6e;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .btn {

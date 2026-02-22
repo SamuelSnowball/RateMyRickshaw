@@ -2,16 +2,14 @@ package com.ratemyrickshaw.model;
 
 public class ImageAnalysisRequest {
     private String imageUrl;
-    private String s3Bucket;
-    private String s3Key;
+    private String imageBase64;
 
     public ImageAnalysisRequest() {
     }
 
-    public ImageAnalysisRequest(String imageUrl, String s3Bucket, String s3Key) {
+    public ImageAnalysisRequest(String imageUrl, String imageBase64) {
         this.imageUrl = imageUrl;
-        this.s3Bucket = s3Bucket;
-        this.s3Key = s3Key;
+        this.imageBase64 = imageBase64;
     }
 
     public String getImageUrl() {
@@ -22,19 +20,11 @@ public class ImageAnalysisRequest {
         this.imageUrl = imageUrl;
     }
 
-    public String getS3Bucket() {
-        return s3Bucket;
+    public String getImageBase64() {
+        return imageBase64;
     }
 
-    public void setS3Bucket(String s3Bucket) {
-        this.s3Bucket = s3Bucket;
-    }
-
-    public String getS3Key() {
-        return s3Key;
-    }
-
-    public void setS3Key(String s3Key) {
-        this.s3Key = s3Key;
+    public void setImageBase64(String imageBase64) {
+        this.imageBase64 = imageBase64;
     }
 }

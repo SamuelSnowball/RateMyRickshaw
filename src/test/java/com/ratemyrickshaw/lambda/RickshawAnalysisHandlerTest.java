@@ -13,37 +13,30 @@ public class RickshawAnalysisHandlerTest {
     @Test
     public void testRequestValidation() {
         ImageAnalysisRequest request = new ImageAnalysisRequest();
-        
+
         // Test that request can be created
         assertNotNull(request);
-        
-        // Test setters
+
+        // Test setters for URL
         request.setImageUrl("https://example.com/image.jpg");
         assertEquals("https://example.com/image.jpg", request.getImageUrl());
-        
-        request.setS3Bucket("test-bucket");
-        assertEquals("test-bucket", request.getS3Bucket());
-        
-        request.setS3Key("test-key.jpg");
-        assertEquals("test-key.jpg", request.getS3Key());
+
+        // Test setters for base64
+        request.setImageBase64("base64encodedstring");
+        assertEquals("base64encodedstring", request.getImageBase64());
     }
 
     @Test
     public void testResponseCreation() {
-        ImageAnalysisResponse response = new ImageAnalysisResponse();
-        
+        ImageAnalysisResponse response = ImageAnalysisResponse.builder().
+                build();
+
         assertNotNull(response);
-        
+
         response.setSuccess(true);
         assertTrue(response.isSuccess());
-        
+
         response.setMessage("Test message");
         assertEquals("Test message", response.getMessage());
-        
-        response.setRickshaw(true);
-        assertTrue(response.isRickshaw());
-        
-        response.setRickshawConfidence(95.5f);
-        assertEquals(95.5f, response.getRickshawConfidence(), 0.01);
     }
 }

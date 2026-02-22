@@ -19,17 +19,17 @@ public class RickshawAnalysisHandler implements RequestHandler<ImageAnalysisRequ
     public ImageAnalysisResponse handleRequest(ImageAnalysisRequest request, Context context) {
         context.getLogger().log("Processing image analysis request");
         
-        if (request.getS3Bucket() != null && request.getS3Key() != null) {
-            context.getLogger().log("Analyzing image from S3: " + request.getS3Bucket() + "/" + request.getS3Key());
-            return rekognitionService.analyzeImage(request.getS3Bucket(), request.getS3Key());
-        } else if (request.getImageUrl() != null) {
+        if (request.getImageUrl() != null && !request.getImageUrl().isEmpty()) {
             context.getLogger().log("Analyzing image from URL: " + request.getImageUrl());
             return rekognitionService.analyzeImageFromUrl(request.getImageUrl());
+        } else if (request.getImageBase64() != null && !request.getImageBase64().isEmpty()) {
+            context.getLogger().log("Analyzing image from base64 data");
+            return rekognitionService.analyzeImageFromBase64(request.getImageBase64());
         } else {
-            ImageAnalysisResponse response = new ImageAnalysisResponse();
-            response.setSuccess(false);
-            response.setMessage("Either s3Bucket/s3Key or imageUrl must be provided");
-            return response;
+            return ImageAnalysisResponse.builder()
+                    .success(false)
+                    .message("Either imageUrl or imageBase64 must be provided")
+                    .build();
         }
     }
 }

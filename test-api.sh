@@ -1,28 +1,27 @@
 #!/bin/bash
-
 # Test script for RateMyRickshaw API
-# This script tests the deployed Lambda function via API Gateway
 
-APP_NAME="ratemyrickshaw"
+STACK_NAME="ratemyrickshaw"
 REGION="eu-west-2"
-API_NAME="${APP_NAME}-api"
 
 echo "========================================="
 echo "Testing RateMyRickshaw API"
 echo "========================================="
 
-# Get API endpoint
-API_ID=$(aws apigateway get-rest-apis --region $REGION --query "items[?name=='$API_NAME'].id" --output text)
+# Get API endpoint from CloudFormation
+API_ENDPOINT=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --region $REGION \
+    --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
+    --output text 2>/dev/null)
 
-if [ -z "$API_ID" ]; then
-    echo "❌ Error: API Gateway not found!"
-    echo "Please deploy the API first: ./scripts/deploy-api-gateway.sh"
+if [ -z "$API_ENDPOINT" ]; then
+    echo "❌ Error: Could not get API endpoint from stack"
+    echo "Please deploy first: ./deploy-sam.sh"
     exit 1
 fi
 
-API_ENDPOINT="https://${API_ID}.execute-api.${REGION}.amazonaws.com/prod"
-
-echo "API Endpoint: $API_ENDPOINT"
+echo "API Endpoint: $API_ENDPOINT/analyze"
 echo ""
 
 # Test 1: Rickshaw image from URL
@@ -33,7 +32,7 @@ RESPONSE=$(curl -s -X POST $API_ENDPOINT/analyze \
   -H 'Content-Type: application/json' \
   -d '{"imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Auto_rickshaw_in_Thrissur.jpg/640px-Auto_rickshaw_in_Thrissur.jpg"}')
 
-echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
+echo "$RESPONSE" | jq '.' 2>/dev/null || echo "$RESPONSE"
 echo ""
 
 # Test 2: Invalid request (empty request)
@@ -44,7 +43,7 @@ RESPONSE=$(curl -s -X POST $API_ENDPOINT/analyze \
   -H 'Content-Type: application/json' \
   -d '{}')
 
-echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
+echo "$RESPONSE" | jq '.' 2>/dev/null || echo "$RESPONSE"
 echo ""
 
 # Test 3: Non-rickshaw image
@@ -55,9 +54,9 @@ RESPONSE=$(curl -s -X POST $API_ENDPOINT/analyze \
   -H 'Content-Type: application/json' \
   -d '{"imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/640px-Cat03.jpg"}')
 
-echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
+echo "$RESPONSE" | jq '.' 2>/dev/null || echo "$RESPONSE"
 echo ""
 
 echo "========================================="
-echo "Testing complete!"
+echo "✅ API testing complete"
 echo "========================================="
