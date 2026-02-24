@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.Base64;
 
-import com.ratemyrickshaw.model.ImageAnalysisResponse;
-
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +21,7 @@ public class RekognitionService {
     @Inject
     RekognitionClient rekognitionClient;
 
-
-    public ImageAnalysisResponse detectTextInImage(byte[] imageBytes) {
+    public DetectTextResponse uploadToRekognition(byte[] imageBytes) {
         Image image = Image.builder()
                 .bytes(SdkBytes.fromByteArray(imageBytes))
                 .build();
@@ -33,30 +30,13 @@ public class RekognitionService {
                 .image(image)
                 .build();
 
-        DetectTextResponse response = rekognitionClient.detectText(request);
-
-        // Filter to only WORD-level detections to avoid duplicates (LINE detections contain the same text)
-        response.textDetections().stream()
-                .filter(textDetection -> "WORD".equals(textDetection.type().toString()))
-                .forEach(textDetection -> {
-                    log.info("Detected text: {} (confidence: {}, type: {})", 
-                            textDetection.detectedText(), 
-                            textDetection.confidence(),
-                            textDetection.type());
-
-                            // Find cerntral point of bounding box - if thats within another bounding box by some margin on all sides - assume its the same detection
-                            // and take the one with the highest confidence
-                            textDetection.geometry().boundingBox();
-                });
-
-        return ImageAnalysisResponse.builder()
-                .build();
+        return rekognitionClient.detectText(request);
     }
 
     /**
      * Analyze image from URL
      */
-    public ImageAnalysisResponse analyzeImageFromUrl(String imageUrl) {
+    public DetectTextResponse analyzeImageFromUrl(String imageUrl) {
         try {
             // Download image from URL
             URI uri = URI.create(imageUrl);
@@ -72,21 +52,17 @@ public class RekognitionService {
             byte[] imageBytes = outputStream.toByteArray();
             inputStream.close();
 
-            return detectTextInImage(imageBytes);
+            return uploadToRekognition(imageBytes);
 
         } catch (Exception e) {
-            ImageAnalysisResponse response = ImageAnalysisResponse.builder()
-                    .success(false)
-                    .message("Error downloading image: " + e.getMessage()).build();
-
-            return response;
+            throw new RuntimeException("Error downloading image: " + e.getMessage(), e);
         }
     }
 
     /**
      * Analyze image from base64 encoded string
      */
-    public ImageAnalysisResponse analyzeImageFromBase64(String base64Image) {
+    public DetectTextResponse analyzeImageFromBase64(String base64Image) {
         try {
             // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
             String base64Data = base64Image;
@@ -95,13 +71,10 @@ public class RekognitionService {
             }
 
             byte[] imageBytes = Base64.getDecoder().decode(base64Data);
-            return detectTextInImage(imageBytes);
+            return uploadToRekognition(imageBytes);
 
         } catch (Exception e) {
-            return ImageAnalysisResponse.builder()
-                    .success(false)
-                    .message("Error decoding base64 image: " + e.getMessage())
-                    .build();
+            throw new RuntimeException("Error decoding base64 image: " + e.getMessage(), e);
         }
     }
 }

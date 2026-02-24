@@ -16,9 +16,6 @@ buildNumber.properties
 .settings/
 bin/
 
-# Lambda test file
-event.json
-
 # IntelliJ
 .idea/
 *.iml

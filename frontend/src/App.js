@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import './App.css';
 
 // Replace this with your actual API Gateway endpoint after deployment
-const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'YOUR_API_GATEWAY_ENDPOINT_HERE';
+const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'http://localhost:8081/analyze';
 
 function App() {
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [inputMode, setInputMode] = useState('url'); // 'url' or 'upload'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -27,6 +28,13 @@ function App() {
       }
       setImageFile(file);
       setError(null);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -52,6 +60,11 @@ function App() {
       return;
     }
 
+    // Set preview for URL mode
+    if (inputMode === 'url') {
+      setImagePreview(imageUrl.trim());
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -70,7 +83,7 @@ function App() {
         };
       }
 
-      const response = await fetch(`${API_ENDPOINT}/analyze`, {
+      const response = await fetch(`${API_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,6 +126,7 @@ function App() {
               onClick={() => {
                 setInputMode('url');
                 setImageFile(null);
+                setImagePreview(null);
                 setError(null);
               }}
             >
@@ -124,6 +138,7 @@ function App() {
               onClick={() => {
                 setInputMode('upload');
                 setImageUrl('');
+                setImagePreview(null);
                 setError(null);
               }}
             >
@@ -166,6 +181,13 @@ function App() {
           </button>
         </form>
 
+        {imagePreview && (
+          <div className="image-preview">
+            <h3>Image Preview</h3>
+            <img src={imagePreview} alt="Preview" />
+          </div>
+        )}
+
         {loading && <div className="loading">Analyzing your image</div>}
 
         {error && <div className="error">{error}</div>}
@@ -174,47 +196,24 @@ function App() {
           <div className="result">
             {result.success ? (
               <>
-                <div className={`verdict ${result.isRickshaw ? 'success' : 'failure'}`}>
-                  {result.isRickshaw ? (
-                    <>
-                      ✅ Rickshaw Detected!
-                      {result.rickshawConfidence > 0 && (
-                        <div className="confidence">
-                          Confidence: {result.rickshawConfidence.toFixed(2)}%
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      ❌ No Rickshaw Detected
-                      <div className="confidence">
-                        This doesn't appear to be a rickshaw
-                      </div>
-                    </>
-                  )}
+                <div className="verdict success">
+                  ✅ Number Plate Detected!
                 </div>
-
-                {result.labels && result.labels.length > 0 && (
-                  <div className="labels">
-                    <h3>Detected Objects:</h3>
-                    <div className="label-list">
-                      {result.labels.map((label, index) => (
-                        <div key={index} className="label-item">
-                          {label}
-                          {result.labelConfidence && result.labelConfidence[label] && (
-                            <span className="confidence-score">
-                              {result.labelConfidence[label].toFixed(1)}%
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                {result.data && (
+                  <div className="number-plate">
+                    <h3>Detected Number Plate:</h3>
+                    <div className="plate-value">{result.data}</div>
+                  </div>
+                )}
+                {result.error && (
+                  <div className="info-message">
+                    {result.error}
                   </div>
                 )}
               </>
             ) : (
               <div className="error">
-                {result.message || 'Analysis failed'}
+                {result.data || result.error || 'Analysis failed'}
               </div>
             )}
           </div>

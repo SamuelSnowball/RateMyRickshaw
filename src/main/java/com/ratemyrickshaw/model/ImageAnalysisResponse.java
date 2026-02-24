@@ -12,4 +12,6 @@ public class ImageAnalysisResponse {
     String message;
     Float confidence;
 
+    String data;
+
 }
