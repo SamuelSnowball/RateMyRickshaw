@@ -23,6 +23,14 @@ function App() {
     {
       url: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhnTSoyGZeLUJSx884CWOrEKFRoCv6Sv4W0rfwYb03juMYEVpKs5daDoxOCXOB0_3hwill4fhpOSV90tlPp4AQ3GsCfjebN-rLV8IS_tfYOGxmZET7sytR2srHKaC2ozQLIB4UOoGPAlInT/s1600/120721+Phoenix+Mills+025.JPG',
       description: 'Side view with visible number plate'
+    },
+    {
+      url: 'https://5.imimg.com/data5/ECOM/Default/2022/3/MK/FL/RS/24932764/61tlzwflyil-ac-sl1500-500x500.jpg',
+      description: 'Front view with clear number plate'
+    },
+    {
+      url: 'https://media.istockphoto.com/id/1387219905/vector/indian-auto-rickshaw-vector-illustration.jpg?s=612x612&w=0&k=20&c=kGbzd1SdAtH6zjsPKwIzwMH_-TB-me97BvKhQskbdEk=',
+      description: 'Vector illustration of auto rickshaw'
     }
   ];
 
@@ -308,8 +316,7 @@ function App() {
         <div className="card examples-section">
           <h2>✅ Good Examples</h2>
           <p className="examples-description">
-            These images demonstrate ideal conditions for number plate detection:
-            clear lighting, frontal or side angles, and unobstructed plates.
+            These images demonstrate ideal conditions for number plate detection. Images containing multiple occurrences of the number plate, like the example on the right, should work.
           </p>
           <div className="examples-grid">
             {goodExamples.map((example, index) => (
