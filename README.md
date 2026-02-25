@@ -6,9 +6,7 @@ AI-powered rickshaw number plate detection and rating system for India's auto-ri
 
 When I was travelling in India I used to hate bartering with Rickshaw / Tuk-tuk drivers about how much the price was going to be. Usually they wave you into their vehicle, drop you off - and then ask for an outrageous price. At the time Uber didn’t accept card payments (what’s the point of this app again..?) and so you had to pay cash everywhere. CONVIENTLY, these drivers never “had change”, another of my frustrations! Anyway, the idea of this system was to give passengers the ability to quickly scan a rickshaw number plate, which would pull back the user ratings of that driver. Giving the potential passenger a bit more insight into their next journey. 
 
-It's essentially a worse version of an uber feature, though at the time I had this idea there was no Uber avaliable in India (which took card..).
-
-The idea was for a system to give passengers the ability to quickly scan a rickshaw number plate and view driver ratings, providing insight before the journey begins.
+It's essentially a worse version of an uber feature, though at the time I had this idea there was no good version Uber avaliable.
 
 ## 🚀 Live Demo
 
