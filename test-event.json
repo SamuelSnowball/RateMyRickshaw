@@ -1,0 +1,7 @@
+{
+  "body": "{\"imageUrl\":\"https://rickshaw.mobi/img/why_the_autowalah_wont_stop_for.jpg\"}",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

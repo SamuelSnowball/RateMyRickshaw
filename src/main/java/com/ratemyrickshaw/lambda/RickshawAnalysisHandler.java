@@ -52,9 +52,12 @@ public class RickshawAnalysisHandler implements RequestHandler<APIGatewayProxyRe
             // Process the detection response
             String detectedText = postRekognitionService.postProcessTextDetections(detectTextResponse);
 
+            // Check if the result is an error message
+            boolean isError = detectedText.startsWith("Invalid");
+            
             ImageAnalysisResponse response = ImageAnalysisResponse.builder()
-                    .success(true)
-                    .message("Image analysis completed successfully")
+                    .success(!isError)
+                    .message(isError ? "Number plate validation failed" : "Image analysis completed successfully")
                     .data(detectedText)
                     .build();
 
@@ -71,19 +74,29 @@ public class RickshawAnalysisHandler implements RequestHandler<APIGatewayProxyRe
     }
 
     /**
-     * Helper method to create a response
+     * Helper method to create a response with CORS headers
      */
     private APIGatewayProxyResponseEvent createResponse(int statusCode, ImageAnalysisResponse body) {
         try {
             String responseBody = body != null ? objectMapper.writeValueAsString(body) : "";
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(statusCode)
-                    .withBody(responseBody);
+                    .withBody(responseBody)
+                    .withHeaders(java.util.Map.of(
+                            "Content-Type", "application/json",
+                            "Access-Control-Allow-Origin", "https://ratemyrickshaw.snowballsjourney.com",
+                            "Access-Control-Allow-Headers", "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+                            "Access-Control-Allow-Methods", "GET,POST,OPTIONS"
+                    ));
         } catch (Exception e) {
             log.error("Error creating response: {}", e.getMessage(), e);
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(500)
-                    .withBody("{\"success\":false,\"message\":\"Internal server error\"}");
+                    .withBody("{\"success\":false,\"message\":\"Internal server error\"}")
+                    .withHeaders(java.util.Map.of(
+                            "Content-Type", "application/json",
+                            "Access-Control-Allow-Origin", "https://ratemyrickshaw.snowballsjourney.com"
+                    ));
         }
     }
 }

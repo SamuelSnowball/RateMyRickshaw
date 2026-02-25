@@ -37,9 +37,25 @@ class NumberPlateExtractionFnTest {
                 .textDetections(parseTextDetectionsFromJson(jsonContent))
                 .build();
         
-        String result = numberPlateExtractionFn.apply(rekognitionResponse);
+        List<String> result = numberPlateExtractionFn.apply(rekognitionResponse);
         
-        assertEquals("AP13v7951", result);
+        assertEquals(List.of("AP13", "v7951"), result);
+    }
+
+    @Test
+    void testPostProcessRekognitionResults_2() throws IOException {
+        // Load JSON response from file
+        Path path = Paths.get("src/test/resources/ocr_data/10_result.json");
+        String jsonContent = Files.readString(path);
+        
+        // Create DetectTextResponse from JSON
+        DetectTextResponse rekognitionResponse = DetectTextResponse.builder()
+                .textDetections(parseTextDetectionsFromJson(jsonContent))
+                .build();
+        
+        List<String> result = numberPlateExtractionFn.apply(rekognitionResponse);
+        
+        assertEquals(List.of("MH03", "MF50", "V5823"), result);
     }
     
     /**

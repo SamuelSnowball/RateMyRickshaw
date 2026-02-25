@@ -274,10 +274,28 @@ class RickshawAnalysisHandlerTest {
     }
 
     @Test
-    void testHandleRequest_OptionsRequest_ReturnsOk() {
-        // Given - OPTIONS preflight request
+    void testHandleRequest_ValidationFails_ReturnsValidationError() throws Exception {
+        // Given - validation returns an error message
+        String imageUrl = "https://example.com/image.jpg";
+        ImageAnalysisRequest request = new ImageAnalysisRequest(imageUrl, null);
+        
         APIGatewayProxyRequestEvent requestEvent = new APIGatewayProxyRequestEvent()
-                .withHttpMethod("OPTIONS");
+                .withHttpMethod("POST")
+                .withBody(objectMapper.writeValueAsString(request));
+        
+        DetectTextResponse mockDetectResponse = DetectTextResponse.builder()
+                .textDetections(List.of(
+                    TextDetection.builder()
+                        .detectedText("XY123")
+                        .confidence(85.0f)
+                        .build()
+                ))
+                .build();
+        
+        when(rekognitionService.analyzeImageFromUrl(imageUrl))
+                .thenReturn(mockDetectResponse);
+        when(postRekognitionService.postProcessTextDetections(mockDetectResponse))
+                .thenReturn("Invalid state code");
 
         // When
         APIGatewayProxyResponseEvent responseEvent = handler.handleRequest(requestEvent, mockContext);
@@ -285,13 +303,14 @@ class RickshawAnalysisHandlerTest {
         // Then
         assertNotNull(responseEvent);
         assertEquals(200, responseEvent.getStatusCode());
-        assertTrue(responseEvent.getHeaders().containsKey("Access-Control-Allow-Origin"));
-        assertTrue(responseEvent.getHeaders().containsKey("Access-Control-Allow-Methods"));
-        assertTrue(responseEvent.getHeaders().containsKey("Access-Control-Allow-Headers"));
         
-        // Verify no service calls were made for OPTIONS
-        verify(rekognitionService, never()).analyzeImageFromUrl(any());
-        verify(rekognitionService, never()).analyzeImageFromBase64(any());
-        verify(postRekognitionService, never()).postProcessTextDetections(any());
+        ImageAnalysisResponse response = objectMapper.readValue(responseEvent.getBody(), ImageAnalysisResponse.class);
+        assertFalse(response.isSuccess());
+        assertEquals("Number plate validation failed", response.getMessage());
+        assertEquals("Invalid state code", response.getData());
+        
+        verify(rekognitionService).analyzeImageFromUrl(imageUrl);
+        verify(postRekognitionService).postProcessTextDetections(mockDetectResponse);
     }
+
 }

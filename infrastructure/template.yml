@@ -1,0 +1,281 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  RateMyRickshaw - AI-powered rickshaw detection and analysis application
+  
+  This template deploys:
+  - Lambda function for image analysis (Java/Quarkus)
+  - API Gateway with STABLE endpoint URL (URL persists across Lambda redeployments)
+  - S3 bucket for static frontend hosting (React)
+  - Optional CloudFront distribution for improved frontend performance
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for the deployment
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: java21
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        QUARKUS_LAMBDA_HANDLER: rickshawAnalysis
+        DISABLE_SIGNAL_HANDLERS: true
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # ============================================
+  # API Gateway - STABLE ENDPOINT
+  # ============================================
+  # This REST API provides a stable endpoint URL that DOES NOT CHANGE when you
+  # redeploy the Lambda function. The API ID in the URL stays the same.
+  # Format: https://{api-id}.execute-api.{region}.amazonaws.com/{stage}/
+  # 
+  # URL only changes if you:
+  # - Delete and recreate the entire API Gateway
+  # - Change the stage name
+  # - Change the AWS region
+  RickshawApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'ratemyrickshaw-api-${Environment}'
+      StageName: !Ref Environment
+      Description: REST API for RateMyRickshaw application with stable endpoint
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      # Uncomment below for custom domain (requires ACM certificate and Route53)
+      # Domain:
+      #   DomainName: api.yourdomain.com
+      #   CertificateArn: arn:aws:acm:region:account:certificate/id
+      #   Route53:
+      #     HostedZoneId: YOUR_HOSTED_ZONE_ID
+
+  # ============================================
+  # Lambda Function - Backend
+  # ============================================
+  RickshawAnalysisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'ratemyrickshaw-lambda-${Environment}'
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Description: Analyzes images for rickshaw detection using AWS Rekognition
+      Runtime: java21
+      MemorySize: 1024
+      Timeout: 120
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectLabels
+                - rekognition:DetectText
+                - rekognition:DetectModerationLabels
+              Resource: '*'
+      Events:
+        AnalyzeImage:
+          Type: Api
+          Properties:
+            Path: /analyze
+            Method: POST
+            RestApiId: !Ref RickshawApi
+
+  # ============================================
+  # S3 Bucket - Frontend Static Hosting
+  # ============================================
+
+  # ============================================
+  # S3 Bucket - Frontend Static Hosting with CloudFront
+  # ============================================
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'ratemyrickshaw-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - '*'
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFrontReadGetObject
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}'
+            Action: 's3:GetObject'
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+
+  # ============================================
+  # CloudFront Distribution with HTTPS
+  # ============================================
+  # Provides:
+  # - HTTPS support with custom domain
+  # - Global CDN for faster load times
+  # - Better caching and security
+  #
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${Environment} S3 bucket'
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'CloudFront distribution for ${Environment} frontend'
+        DefaultRootObject: index.html
+        Aliases:
+          - ratemyrickshaw.snowballsjourney.com
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # CORS-S3Origin
+          ResponseHeadersPolicyId: 5cc3b908-e619-4b99-88e5-2cf7f45965bd  # CORS-With-Preflight
+          Compress: true
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Sub 'arn:aws:acm:us-east-1:${AWS::AccountId}:certificate/e43dd8e8-5b34-436a-a76b-566641bdb563'
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100  # Use only North America and Europe edge locations
+
+Outputs:
+  # ============================================
+  # API Gateway Outputs
+  # ============================================
+  ApiEndpoint:
+    Description: >
+      STABLE API Gateway endpoint (base URL).
+      This URL does NOT change when you redeploy your Lambda function.
+      Use this in your frontend: REACT_APP_API_ENDPOINT
+    Value: !Sub 'https://${RickshawApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiEndpoint'
+
+  AnalyzeEndpoint:
+    Description: Full URL for the /analyze endpoint
+    Value: !Sub 'https://${RickshawApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/analyze'
+    Export:
+      Name: !Sub '${AWS::StackName}-AnalyzeEndpoint'
+
+  ApiId:
+    Description: API Gateway ID (for reference)
+    Value: !Ref RickshawApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiId'
+
+  # ============================================
+  # Lambda Function Outputs
+  # ============================================
+  LambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt RickshawAnalysisFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaArn'
+
+  LambdaFunctionName:
+    Description: Lambda Function Name
+    Value: !Ref RickshawAnalysisFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'
+
+  # ============================================
+  # Frontend S3 Outputs
+  # ============================================
+  FrontendBucketName:
+    Description: S3 bucket name for frontend hosting (use with 'aws s3 sync')
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendBucket'
+
+  # ============================================
+  # CloudFront Outputs
+  # ============================================
+  CloudFrontURL:
+    Description: CloudFront distribution URL (HTTPS enabled)
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontURL'
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID (for cache invalidation)
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontId'
+
+  WebsiteURL:
+    Description: Your custom domain URL (HTTPS enabled via CloudFront)
+    Value: 'https://ratemyrickshaw.snowballsjourney.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebsiteURL'
+
+  # ============================================
+  # Deployment Instructions
+  # ============================================
+  DeploymentInstructions:
+    Description: Quick deployment commands
+    Value: !Sub |
+      Frontend Deployment:
+        cd frontend && npm run build
+        aws s3 sync build/ s3://${FrontendBucket}/ --delete
+        aws cloudfront create-invalidation --distribution-id ${CloudFrontDistribution} --paths "/*"
+      
+      Lambda Redeployment:
+        mvn clean package
+        sam deploy
+      
+      API Endpoint (use in frontend): ${RickshawApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+      Website URL: https://ratemyrickshaw.snowballsjourney.com
